@@ -2,6 +2,7 @@
 #include "limecrypt_p.h"
 
 #include <sstream>
+#include <iostream>
 
 // Crypto++ includes
 #include "crypto++/rsa.h"
@@ -9,6 +10,7 @@
 #include "crypto++/files.h"
 #include "crypto++/base64.h"
 #include "crypto++/pssr.h"
+#include "crypto++/fltrimpl.h"
 
 namespace {
     // local typedefs
@@ -18,7 +20,7 @@ namespace {
     typedef CryptoPP::RSASS<CryptoPP::PKCS1v15, CryptoPP::SHA256>::Signer RSA_Appendix_Signer;
     typedef CryptoPP::RSASS<CryptoPP::PKCS1v15, CryptoPP::SHA256>::Verifier RSA_Appendix_Verifier;
 
-    typedef CryptoPP::RSASS<CryptoPP::PSSR, CryptoPP::SHA256>::Signer RSA_Revovery_Signer;
+    typedef CryptoPP::RSASS<CryptoPP::PSSR, CryptoPP::SHA256>::Signer RSA_Recovery_Signer;
     typedef CryptoPP::RSASS<CryptoPP::PSSR, CryptoPP::SHA256>::Verifier RSA_Recovery_Verifier;
 
     // Basic key functionality for public and private keys
@@ -33,7 +35,9 @@ namespace {
         {
             try {
                 if (!isValid()) throw CryptoPP::Exception(CryptoPP::Exception::INVALID_DATA_FORMAT, "Invalid key." );
-                key.Save(CryptoPP::Base64Encoder(new CryptoPP::FileSink(filename.c_str())).Ref());
+                CryptoPP::Base64Encoder encoder(new CryptoPP::FileSink(filename.c_str()));
+                key.Save(encoder);
+                encoder.MessageEnd();
                 return true;
             }
             catch (CryptoPP::Exception& e) {
@@ -46,7 +50,9 @@ namespace {
         {
             try {
                 if (!isValid()) throw CryptoPP::Exception(CryptoPP::Exception::INVALID_DATA_FORMAT, "Invalid key." );
-                key.Save(CryptoPP::Base64Encoder(new CryptoPP::StringSink(keyOut)).Ref());
+                CryptoPP::Base64Encoder encoder(new CryptoPP::StringSink(keyOut));
+                key.Save(encoder);
+                encoder.MessageEnd();
                 return true;
             }
             catch (CryptoPP::Exception& e) {
@@ -138,6 +144,54 @@ namespace {
 
 namespace LimeCrypt {
 
+class RecoverySignerFilter : public CryptoPP::Unflushable<CryptoPP::Filter>
+{
+public:
+    RecoverySignerFilter(CryptoPP::RandomNumberGenerator &rng,
+                         const CryptoPP::PK_Signer &signer,
+                         BufferedTransformation *attachment = NULL, bool putMessage=false)
+        : m_rng(rng), m_signer(signer), m_messageAccumulator(signer.NewSignatureAccumulator(rng)),
+          m_putMessage(putMessage), m_buf(signer.MaxSignatureLength()), m_streambufLength(0),
+          m_recoverableLength(signer.MaxRecoverableLength()) {Detach(attachment);}
+
+    std::string AlgorithmName() const {return m_signer.AlgorithmName();}
+
+    size_t Put2(const byte *begin, size_t length, int messageEnd, bool blocking) {
+        using namespace CryptoPP;
+        size_t readlen;
+        FILTER_BEGIN;
+        m_streambuf.write((std::stringstream::char_type*)begin,length);
+        m_streambufLength += length;
+        while (m_streambufLength > m_recoverableLength) {
+            readlen = std::min(m_streambufLength - m_recoverableLength, m_buf.size());
+            m_streambuf.read((std::stringstream::char_type*)(byte*)m_buf, readlen);
+            m_messageAccumulator->Update(m_buf, readlen);
+            if (m_putMessage)
+                FILTER_OUTPUT(1, m_buf, readlen, 0);
+            m_streambufLength -= readlen;
+        }
+        if (messageEnd)
+        {
+            m_streambuf.read((std::stringstream::char_type*)(byte*)m_buf, m_streambufLength);
+            m_signer.InputRecoverableMessage(*m_messageAccumulator,m_buf,m_streambufLength);
+            m_signer.Sign(m_rng, m_messageAccumulator.release(), m_buf);
+            FILTER_OUTPUT(2, m_buf, m_signer.SignatureLength(), messageEnd);
+            m_messageAccumulator.reset(m_signer.NewSignatureAccumulator(m_rng));
+        }
+        FILTER_END_NO_MESSAGE_END;
+    }
+
+private:
+    CryptoPP::RandomNumberGenerator &m_rng;
+    const CryptoPP::PK_Signer &m_signer;
+    IKey::Pointer<CryptoPP::PK_MessageAccumulator>::Type m_messageAccumulator;
+    bool m_putMessage;
+    CryptoPP::SecByteBlock m_buf;
+    std::stringstream m_streambuf;
+    size_t m_streambufLength;
+    const size_t m_recoverableLength;
+};
+
 struct PrivateKey::PrivateKeyImpl : public CCKeyImpl<CryptoPP::RSA::PrivateKey>
 {
     template <typename Type>
@@ -149,6 +203,26 @@ struct PrivateKey::PrivateKeyImpl : public CCKeyImpl<CryptoPP::RSA::PrivateKey>
             CryptoPP::AutoSeededRandomPool rng;
             CryptoPP::FileSource(in, true,
                 new CryptoPP::SignerFilter(rng, signer,
+                    new CryptoPP::FileSink( out ),
+                    putMessage
+                )
+            );
+            return true;
+        }
+        catch (CryptoPP::Exception& e) {
+            handleError(std::string("Sign data: ") + e.what());
+        }
+        return false;
+    }
+
+    bool signrec(std::istream& in, std::ostream& out, bool putMessage) const
+    {
+        try {
+            if (!isValid()) throw CryptoPP::Exception(CryptoPP::Exception::INVALID_DATA_FORMAT, "Invalid key." );
+            RSA_Recovery_Signer signer(key);
+            CryptoPP::AutoSeededRandomPool rng;
+            CryptoPP::FileSource(in, true,
+                new RecoverySignerFilter(rng, signer,
                     new CryptoPP::FileSink( out ),
                     putMessage
                 )
@@ -197,7 +271,7 @@ struct PublicKey::PublicKeyImpl : public CCKeyImpl<CryptoPP::RSA::PublicKey>
                 new CryptoPP::SignatureVerificationFilter( verifier,
                     attachment,
                     CryptoPP::VerifierFilter::THROW_EXCEPTION
-                    | CryptoPP::VerifierFilter::SIGNATURE_AT_END
+                    //| CryptoPP::VerifierFilter::SIGNATURE_AT_END
                     | additionalFlags
                )
             );
@@ -286,6 +360,7 @@ bool PrivateKey::create(unsigned int keySizeBit)
 
 bool PrivateKey::signWithAppendix(std::istream& in, std::string& signatureOut) const
 {
+    handleError("APPENDIX");
     std::ostringstream oss;
     if(!_impl->sign<RSA_Appendix_Signer>(in, oss, false)) return false;
     signatureOut = oss.str();
@@ -299,7 +374,8 @@ bool PrivateKey::signWithAppendix(std::istream& in, std::ostream& out) const
 
 bool PrivateKey::signWithRecovery(std::istream& in, std::ostream& out) const
 {
-    return _impl->sign<RSA_Revovery_Signer>(in, out, true);
+   // return _impl->sign<RSA_Recovery_Signer>(in, out, true);
+    return _impl->signrec(in,out,true);
 }
 
 bool PrivateKey::decrypt(std::istream &dataIn, std::ostream& dataOut) const

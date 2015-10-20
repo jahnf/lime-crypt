@@ -1,4 +1,4 @@
-# CMake file: Minimal cryptopp static lib for SignedLicense class/library
+# CMake file: Minimal cryptopp static lib for LimeCrypt
 #
 
 cmake_minimum_required(VERSION 2.8)

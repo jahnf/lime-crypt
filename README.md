@@ -1,4 +1,4 @@
-LimeCrypt
+![](lclogo.png) > LimeCrypt
 =========
 LimeCrypt wants to provide an easy C++ interface to some cryptographic
 functionality without bothering the user with much details. LimeCrypt 
@@ -12,6 +12,7 @@ Currently the library provides methods for:
     * Signing/Verification (Recovery and Appendix Schemes)
     * Encryption/Decryption
 * Symmetric AES encryption/decryption
+* Encoding and Decoding Base64 and Hex
 
 [1]: https://cryptopp.com/  "Crypto++ Library"
 
@@ -28,3 +29,19 @@ TODO
 
 ### AES
 TODO
+
+Building
+--------
+LimeCrypt comes with CMake files and should build almost everywhere and
+should build everywhere where [Crypto++][1] builds.
+
+**Example:** Build the library including examples and tests inside `build` directory
+and run the tests.
+```
+$ cd lime-crypt
+$ mkdir build && cd build
+$ cmake .. -DBUILD_EXAMPLES=1 -DBUILD_TESTS=1
+$ make
+$ make test
+```
+
