@@ -5,7 +5,7 @@
 namespace LimeCrypt
 {
 
-/// CryptoCerial Key Interface class.
+/// LimeCrypt Key Interface class.
 class IKey
 {
 public:
