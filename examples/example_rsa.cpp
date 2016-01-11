@@ -98,11 +98,11 @@ static void rsa_example_exception_error_handling()
 int main(int argc, char** argv)
 {
     // Our message This is a message. This is a message. Yes it's really a message!
-    const std::string long_message("012345678901234567890123456789012345678901234567890123456789" \
-                                   "012345678901234567890123456789012345678901234567890123456789" \
-                                   "012345678901234567890123456789012345678901234567890123456789" \
-                                   "012345678901234567890123456789012345678901234567890123456789" \
-                                   "0123456789ABCDEFGHIJKLMNOPQRSTUVWZYZ");
+    const std::string long_message("abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefgh" \
+                                   "ijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnop" \
+                                   "qrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwx" \
+                                   "yz0000000000000000000000000000000000000000000000000000000000" \
+                                   "0123456789abdefghijklmnopqrstuvwxyz");
 
     const std::string short_message("my.short.message");
 
@@ -114,6 +114,7 @@ int main(int argc, char** argv)
     errorHandling(STDERR_OUT);
 
     rsa_example_create_and_save();
+
     Print("---- Sign Message with recovery and verify (long msg) ----");
     std::string signed_message = rsa_example_load_and_sign_recovery(long_message);
     rsa_example_load_and_verify_recovery(signed_message);

@@ -66,29 +66,34 @@ bool encode(std::istream& in, std::ostream& out, bool uppercase, int outputGroup
     return hex_encode<FileSource,FileSink>(in, out, uppercase, outputGroupSize, separator, terminator);
 }
 
-bool encode(std::istream& in, std::string& out, bool uppercase, int outputGroupSize, const std::string& separator, const std::string& terminator)
+bool encode(std::istream& in, std::string& out, bool uppercase, int outputGroupSize,
+            const std::string& separator, const std::string& terminator)
 {
     return hex_encode<FileSource,StringSink>(in, out, uppercase, outputGroupSize, separator, terminator);
 }
 
-bool encode(const std::string& in, std::ostream& out, bool uppercase, int outputGroupSize, const std::string& separator, const std::string& terminator)
+bool encode(const std::string& in, std::ostream& out, bool uppercase, int outputGroupSize,
+            const std::string& separator, const std::string& terminator)
 {
     return hex_encode<StringSource,FileSink>(in, out, uppercase, outputGroupSize, separator, terminator);
 }
 
-bool encode(const std::string& in, std::string& out, bool uppercase, int outputGroupSize, const std::string& separator, const std::string& terminator)
+bool encode(const std::string& in, std::string& out, bool uppercase, int outputGroupSize,
+            const std::string& separator, const std::string& terminator)
 {
     return hex_encode<StringSource,StringSink>(in, out, uppercase, outputGroupSize, separator, terminator);
 }
 
-std::string encode(const std::string& in, bool uppercase, int outputGroupSize, const std::string& separator, const std::string& terminator)
+std::string encode(const std::string& in, bool uppercase, int outputGroupSize,
+                   const std::string& separator, const std::string& terminator)
 {
     std::string out;
     encode(in, out, uppercase, outputGroupSize, separator, terminator);
     return out;
 }
 
-std::string encode(std::istream& in, bool uppercase, int outputGroupSize, const std::string& separator, const std::string& terminator)
+std::string encode(std::istream& in, bool uppercase, int outputGroupSize,
+                   const std::string& separator, const std::string& terminator)
 {
     std::string out;
     encode(in, out, uppercase, outputGroupSize, separator, terminator);

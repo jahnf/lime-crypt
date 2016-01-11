@@ -236,8 +236,8 @@ public:
             // The remaining bytes (with a maximum of m_recoverableLength will be put into
             // the signature as recoverable part.
             m_streambuf.read((std::stringstream::char_type*)(byte*)m_buf, m_streambufLength);
-            m_signer.InputRecoverableMessage(*m_messageAccumulator,m_buf,m_streambufLength);
-            m_signer.Sign(m_rng, m_messageAccumulator.release(), m_buf);
+            m_signer.InputRecoverableMessage(*m_messageAccumulator, m_buf, m_streambufLength);
+            m_signer.SignAndRestart(m_rng, *m_messageAccumulator, m_buf);
             FILTER_OUTPUT(2, m_buf, m_signer.SignatureLength(), messageEnd);
             m_messageAccumulator.reset(m_signer.NewSignatureAccumulator(m_rng));
         }
