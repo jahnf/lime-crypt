@@ -134,7 +134,7 @@ namespace {
             : m_istrms(1, &istrm0), StreambufConcatenator(m_istrms),
               std::istream((StreambufConcatenator*)this), std::ios(0) { append(istrm1); }
 
-        append(std::istream& istrm) { m_istrms.push_back(&istrm); }
+        void append(std::istream& istrm) { m_istrms.push_back(&istrm); }
 
     private:
         std::vector<std::istream*> m_istrms;
@@ -143,6 +143,67 @@ namespace {
 } // end anonymous namspace
 
 namespace LimeCrypt {
+
+typedef CryptoPP::SignatureVerificationFilter AppendixVerifyFilter;
+typedef CryptoPP::SignerFilter AppendixSignerFilter;
+
+class RecoveryVerifyFilter : public CryptoPP::Unflushable<CryptoPP::Filter>
+{
+public:
+    RecoveryVerifyFilter(const CryptoPP::PK_Verifier &verifier,
+                         BufferedTransformation *attachment = NULL,
+                         CryptoPP::word32 flags = AppendixVerifyFilter::PUT_MESSAGE)
+        : m_verifier(verifier), m_messageAccumulator(verifier.NewVerificationAccumulator()),
+          m_putMessage(flags & AppendixVerifyFilter::PUT_MESSAGE),
+          m_buf(verifier.MaxSignatureLength()), m_streambufLength(0),
+          m_signatureLength(verifier.MaxSignatureLength()) {Detach(attachment);}
+
+    std::string AlgorithmName() const {return m_verifier.AlgorithmName();}
+
+    size_t Put2(const byte *begin, size_t length, int messageEnd, bool blocking) {
+        using namespace CryptoPP;
+        size_t readlen;
+        FILTER_BEGIN;
+        m_streambuf.write((std::stringstream::char_type*)begin,length);
+        m_streambufLength += length;
+        while (m_streambufLength > m_signatureLength) {
+            readlen = std::min(m_streambufLength - m_signatureLength, m_buf.size());
+            m_streambuf.read((std::stringstream::char_type*)(byte*)m_buf, readlen);
+            m_messageAccumulator->Update(m_buf, readlen);
+            if (m_putMessage)
+                FILTER_OUTPUT(1, m_buf, readlen, 0);
+            m_streambufLength -= readlen;
+        }
+        if (messageEnd)
+        {
+            if (m_streambufLength != m_signatureLength)
+                throw AppendixVerifyFilter::SignatureVerificationFailed();
+
+            m_streambuf.read((std::stringstream::char_type*)(byte*)m_buf, m_streambufLength);
+            m_verifier.InputSignature(*m_messageAccumulator, m_buf, m_streambufLength);
+            m_decodingResult = m_verifier.RecoverAndRestart(m_buf, *m_messageAccumulator);
+
+            if (!m_decodingResult.isValidCoding)
+                throw AppendixVerifyFilter::SignatureVerificationFailed();
+
+            if (m_putMessage)
+                FILTER_OUTPUT(2, m_buf, m_decodingResult.messageLength, messageEnd);
+
+            m_messageAccumulator.reset(m_verifier.NewVerificationAccumulator());
+        }
+        FILTER_END_NO_MESSAGE_END;
+    }
+
+private:
+    const CryptoPP::PK_Verifier &m_verifier;
+    IKey::Pointer<CryptoPP::PK_MessageAccumulator>::Type m_messageAccumulator;
+    const bool m_putMessage;
+    CryptoPP::SecByteBlock m_buf;
+    CryptoPP::DecodingResult m_decodingResult;
+    std::stringstream m_streambuf;
+    size_t m_streambufLength;
+    const size_t m_signatureLength;
+};
 
 class RecoverySignerFilter : public CryptoPP::Unflushable<CryptoPP::Filter>
 {
@@ -172,6 +233,8 @@ public:
         }
         if (messageEnd)
         {
+            // The remaining bytes (with a maximum of m_recoverableLength will be put into
+            // the signature as recoverable part.
             m_streambuf.read((std::stringstream::char_type*)(byte*)m_buf, m_streambufLength);
             m_signer.InputRecoverableMessage(*m_messageAccumulator,m_buf,m_streambufLength);
             m_signer.Sign(m_rng, m_messageAccumulator.release(), m_buf);
@@ -185,7 +248,7 @@ private:
     CryptoPP::RandomNumberGenerator &m_rng;
     const CryptoPP::PK_Signer &m_signer;
     IKey::Pointer<CryptoPP::PK_MessageAccumulator>::Type m_messageAccumulator;
-    bool m_putMessage;
+    const bool m_putMessage;
     CryptoPP::SecByteBlock m_buf;
     std::stringstream m_streambuf;
     size_t m_streambufLength;
@@ -194,7 +257,7 @@ private:
 
 struct PrivateKey::PrivateKeyImpl : public CCKeyImpl<CryptoPP::RSA::PrivateKey>
 {
-    template <typename Type>
+    template <typename Type, typename FilterType>
     bool sign(std::istream& in, std::ostream& out, bool putMessage) const
     {
         try {
@@ -202,27 +265,7 @@ struct PrivateKey::PrivateKeyImpl : public CCKeyImpl<CryptoPP::RSA::PrivateKey>
             Type signer(key);
             CryptoPP::AutoSeededRandomPool rng;
             CryptoPP::FileSource(in, true,
-                new CryptoPP::SignerFilter(rng, signer,
-                    new CryptoPP::FileSink( out ),
-                    putMessage
-                )
-            );
-            return true;
-        }
-        catch (CryptoPP::Exception& e) {
-            handleError(std::string("Sign data: ") + e.what());
-        }
-        return false;
-    }
-
-    bool signrec(std::istream& in, std::ostream& out, bool putMessage) const
-    {
-        try {
-            if (!isValid()) throw CryptoPP::Exception(CryptoPP::Exception::INVALID_DATA_FORMAT, "Invalid key." );
-            RSA_Recovery_Signer signer(key);
-            CryptoPP::AutoSeededRandomPool rng;
-            CryptoPP::FileSource(in, true,
-                new RecoverySignerFilter(rng, signer,
+                new FilterType(rng, signer,
                     new CryptoPP::FileSink( out ),
                     putMessage
                 )
@@ -258,17 +301,17 @@ struct PrivateKey::PrivateKeyImpl : public CCKeyImpl<CryptoPP::RSA::PrivateKey>
 
 struct PublicKey::PublicKeyImpl : public CCKeyImpl<CryptoPP::RSA::PublicKey>
 {
-    template <typename Type>
+    template <typename Type, typename FilterType>
     bool verify(std::istream& in, std::ostream& out, bool putMessage = true) const
     {
-        int additionalFlags = putMessage ? CryptoPP::VerifierFilter::PUT_MESSAGE : 0;
+        CryptoPP::word32 additionalFlags = putMessage ? AppendixVerifyFilter::PUT_MESSAGE : 0;
         try {
             CryptoPP::BufferedTransformation *attachment =
                     putMessage ? new CryptoPP::FileSink(out) : NULL;
 
             Type verifier(key);
             CryptoPP::FileSource(in, true,
-                new CryptoPP::SignatureVerificationFilter( verifier,
+                new FilterType( verifier,
                     attachment,
                     CryptoPP::VerifierFilter::THROW_EXCEPTION
                     //| CryptoPP::VerifierFilter::SIGNATURE_AT_END
@@ -283,11 +326,11 @@ struct PublicKey::PublicKeyImpl : public CCKeyImpl<CryptoPP::RSA::PublicKey>
         return false;
     }
 
-    template <typename Type>
+    template <typename Type, typename FilterType>
     bool verify(std::istream& in) const
     {
         std::ostringstream out;
-        return verify<Type>(in, out, false);
+        return verify<Type, FilterType>(in, out, false);
     }
 
     template<typename SrcType, typename SinkType, typename SrcArg, typename SinkArg>
@@ -360,22 +403,20 @@ bool PrivateKey::create(unsigned int keySizeBit)
 
 bool PrivateKey::signWithAppendix(std::istream& in, std::string& signatureOut) const
 {
-    handleError("APPENDIX");
     std::ostringstream oss;
-    if(!_impl->sign<RSA_Appendix_Signer>(in, oss, false)) return false;
+    if(!_impl->sign<RSA_Appendix_Signer, AppendixSignerFilter>(in, oss, false)) return false;
     signatureOut = oss.str();
     return true;
 }
 
 bool PrivateKey::signWithAppendix(std::istream& in, std::ostream& out) const
 {
-    return _impl->sign<RSA_Appendix_Signer>(in, out, true);
+    return _impl->sign<RSA_Appendix_Signer, AppendixSignerFilter>(in, out, true);
 }
 
 bool PrivateKey::signWithRecovery(std::istream& in, std::ostream& out) const
 {
-   // return _impl->sign<RSA_Recovery_Signer>(in, out, true);
-    return _impl->signrec(in,out,true);
+    return _impl->sign<RSA_Recovery_Signer, RecoverySignerFilter>(in, out, true);
 }
 
 bool PrivateKey::decrypt(std::istream &dataIn, std::ostream& dataOut) const
@@ -448,22 +489,22 @@ bool PublicKey::verifyWithAppendix(std::istream& dataIn, const std::string& sign
 {
     std::istringstream iss_sig(signatureIn);
     IStreamConcatenator dataWithSignature(dataIn,iss_sig);
-    return _impl->verify<RSA_Appendix_Verifier>(dataWithSignature);
+    return _impl->verify<RSA_Appendix_Verifier, AppendixVerifyFilter>(dataWithSignature);
 }
 
 bool PublicKey::verifyWithAppendix(std::istream& dataIn, std::ostream& dataOut) const
 {
-    return _impl->verify<RSA_Appendix_Verifier>(dataIn, dataOut);
+    return _impl->verify<RSA_Appendix_Verifier, AppendixVerifyFilter>(dataIn, dataOut);
 }
 
 bool PublicKey::verifyWithRecovery(std::istream& dataIn) const
 {
-    return _impl->verify<RSA_Recovery_Verifier>(dataIn);
+    return _impl->verify<RSA_Recovery_Verifier, RecoveryVerifyFilter>(dataIn);
 }
 
 bool PublicKey::verifyWithRecovery(std::istream& dataIn, std::ostream& dataOut) const
 {
-    return _impl->verify<RSA_Recovery_Verifier>(dataIn, dataOut);
+    return _impl->verify<RSA_Recovery_Verifier, RecoveryVerifyFilter>(dataIn, dataOut);
 }
 
 bool PublicKey::encrypt(std::string& dataInOut) const

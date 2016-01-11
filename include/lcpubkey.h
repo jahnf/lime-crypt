@@ -118,7 +118,7 @@ private:
     struct PrivateKeyImpl;
     const IKey::Pointer<PrivateKeyImpl>::Type _impl;
 
-    // Allow certain members of QPublicKey access to the private
+    // Allow certain members of PublicKey access to the private
     // implementation to be able to derive a crypto++ public key from
     // the existing crypto++ private key.
     friend bool PublicKey::assignFrom(const PrivateKey&);
