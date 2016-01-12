@@ -171,7 +171,7 @@ public:
             m_streambuf.read((std::stringstream::char_type*)(byte*)m_buf, readlen);
             m_messageAccumulator->Update(m_buf, readlen);
             if (m_putMessage)
-                FILTER_OUTPUT(1, m_buf, readlen, 0);
+                FILTER_OUTPUT2(1, void(0), m_buf, readlen, 0);
             m_streambufLength -= readlen;
         }
         if (messageEnd)
@@ -187,7 +187,7 @@ public:
                 throw AppendixVerifyFilter::SignatureVerificationFailed();
 
             if (m_putMessage)
-                FILTER_OUTPUT(2, m_buf, m_decodingResult.messageLength, messageEnd);
+                FILTER_OUTPUT2(2, void(0), m_buf, m_decodingResult.messageLength, messageEnd);
 
             m_messageAccumulator.reset(m_verifier.NewVerificationAccumulator());
         }
@@ -228,7 +228,7 @@ public:
             m_streambuf.read((std::stringstream::char_type*)(byte*)m_buf, readlen);
             m_messageAccumulator->Update(m_buf, readlen);
             if (m_putMessage)
-                FILTER_OUTPUT(1, m_buf, readlen, 0);
+                FILTER_OUTPUT2(1, void(0) ,m_buf, readlen, 0);
             m_streambufLength -= readlen;
         }
         if (messageEnd)
@@ -238,7 +238,7 @@ public:
             m_streambuf.read((std::stringstream::char_type*)(byte*)m_buf, m_streambufLength);
             m_signer.InputRecoverableMessage(*m_messageAccumulator, m_buf, m_streambufLength);
             m_signer.SignAndRestart(m_rng, *m_messageAccumulator, m_buf);
-            FILTER_OUTPUT(2, m_buf, m_signer.SignatureLength(), messageEnd);
+            FILTER_OUTPUT2(2, void(0), m_buf, m_signer.SignatureLength(), messageEnd);
             m_messageAccumulator.reset(m_signer.NewSignatureAccumulator(m_rng));
         }
         FILTER_END_NO_MESSAGE_END;
@@ -370,6 +370,7 @@ PrivateKey::~PrivateKey()
 PrivateKey& PrivateKey::operator=(const PrivateKey& rhs)
 {
     *_impl = *rhs._impl;
+    return *this;
 }
 
 bool PrivateKey::isValid() const
@@ -455,6 +456,7 @@ PublicKey::~PublicKey()
 PublicKey& PublicKey::operator=(const PublicKey& rhs)
 {
     *_impl = *rhs._impl;
+    return *this;
 }
 
 bool PublicKey::isValid() const
