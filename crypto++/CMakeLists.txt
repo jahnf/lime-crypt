@@ -26,3 +26,6 @@ set(CRYPTOPP_SOURCES_MINIMAL
 
 add_library(cryptopp-minimal STATIC ${CRYPTOPP_SOURCES_MINIMAL})
 
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    set_property(TARGET cryptopp-minimal APPEND PROPERTY COMPILE_DEFINITIONS "CRYPTOPP_DISABLE_ASM")
+endif()
