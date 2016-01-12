@@ -34,6 +34,7 @@ add_library(limecrypt STATIC src/limecrypt.cpp  include/limecrypt.h  src/limecry
                              src/lcpubkey.cpp   include/lcpubkey.h
                              src/lcaes.cpp      include/lcaes.h
                              src/lcencode.cpp   include/lcencode.h
+                             README.md
                              )
 
 # Link against crypto++ 
