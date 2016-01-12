@@ -1,5 +1,7 @@
 ![](lclogo.png) > LimeCrypt
 =========
+[![Build Status](https://travis-ci.org/jahnf/lime-crypt.svg?branch=master)](https://travis-ci.org/jahnf/lime-crypt)
+
 LimeCrypt wants to provide an easy C++ interface to some cryptographic
 functionality without bothering the user with much details. LimeCrypt 
 is in essence a wrapper around _some_ of the [Crypto++ Libary][1] with 
