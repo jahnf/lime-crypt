@@ -79,7 +79,7 @@ namespace {
 
         void reset() { keyValid = false; }
 
-        bool validate()
+        void validate()
         {
             CryptoPP::AutoSeededRandomPool rng;
             key.ThrowIfInvalid(rng,3);
