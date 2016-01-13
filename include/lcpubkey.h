@@ -13,6 +13,7 @@ public:
     virtual bool isValid() const = 0;
     virtual bool save(const std::string& filename) const = 0;
     virtual bool load(const std::string& filename) = 0;
+    // auto_ptr is deprecated with C++11
     #if __cplusplus <= 199711L
         template<typename T> struct Pointer { typedef std::auto_ptr<T> Type; };
     #else
@@ -31,8 +32,13 @@ public:
 
     PublicKey& operator=(const PublicKey& rhs);
 
+    /// Returns if the current instance is a valid public key.
     bool isValid() const;
+
+    /// Save the public key to a file.
     bool save(const std::string& filename) const;
+
+    /// Load a public key from file.
     bool load(const std::string& filename);
 
     /// Derive and set the public key from a private key.
@@ -48,8 +54,8 @@ public:
     /// signature to dataOut.
     bool verifyWithAppendix(std::istream& dataIn, std::ostream& dataOut) const;
 
-    /// Verifies  the input data with recovery signature and write out the message
-    /// to dataOut.
+    /// Verifies the input data with recovery signature and write out the message
+    /// and recovered message part to dataOut.
     bool verifyWithRecovery(std::istream& dataIn, std::ostream& dataOut) const;
 
     /// Verifies the input data with recovery signature.
@@ -89,8 +95,13 @@ public:
 
     PrivateKey& operator=(const PrivateKey& rhs);
 
+    /// Returns if the current instance is a valid private key.
     bool isValid() const;
+
+    /// Save the public key to a file.
     bool save(const std::string& filename) const;
+
+    /// Load a public key from file.
     bool load(const std::string& filename);
 
     /// Create and initialize new random private key with the given key size.
