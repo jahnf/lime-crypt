@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 
+// C++11 check
 #if __cplusplus <= 199711L
     #include <stdint.h>
 #else
@@ -20,17 +21,18 @@
 namespace LimeCrypt { namespace AES {
 
 namespace {
+    typedef CryptoPP::SHA256 LcAESHashFunction; // The hash function used by LimeCrypt
     static const int PBKDF_Salt_Size = CryptoPP::AES::MAX_KEYLENGTH;
 
-    // runtime check for endianess
+    // Runtime check for endianess.
     inline bool is_big_endian(void)
     {
         static union { uint32_t i; char c[4]; } bint = {0x01020304};
         return bint.c[0] == 1;
     }
 
-    // swap uint32_t from little to big endian and the other way around
-    // used to always store uint32_t in LE format to streams.
+    // Swap uint32_t from little to big endian and the other way around.
+    // Used to always store uint32_t in LE format to streams.
     inline void byteswap32(uint32_t &i)
     {
         i = ((i>>24)&0xff)          // move byte 3 to byte 0
@@ -50,7 +52,7 @@ bool encrypt(const std::string& password, std::istream& in, std::ostream& out,
         rng.GenerateBlock(salt, salt.size());
 
         // Generate IV and key from password and salt
-        CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA256> pbkdf;
+        CryptoPP::PKCS5_PBKDF2_HMAC<LcAESHashFunction> pbkdf;
         pbkdf.DeriveKey(
             // buffer that holds the derived key
             iv_key, iv_key.size(),
@@ -114,7 +116,7 @@ bool decrypt(const std::string& password, std::istream& in, std::ostream& out,
             if(is_big_endian()) byteswap32(iterations);
         }
 
-        CryptoPP::PKCS5_PBKDF2_HMAC<CryptoPP::SHA256> pbkdf;
+        CryptoPP::PKCS5_PBKDF2_HMAC<LcAESHashFunction> pbkdf;
         pbkdf.DeriveKey(
             // buffer that holds the derived key
             iv_key, iv_key.size(),
@@ -124,7 +126,8 @@ bool decrypt(const std::string& password, std::istream& in, std::ostream& out,
             (byte *) password.data(), password.size(),
             // salt bytes
             salt, salt.size(),
-            // iteration count. See SP 800-132 for details. You want this as large as you can tolerate.
+            // iteration count. See SP 800-132 for details.
+            // You want this as large as you can tolerate.
             // make sure to use the same iteration count on both sides...
             iterations
         );

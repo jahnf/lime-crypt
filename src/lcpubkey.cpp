@@ -14,14 +14,16 @@
 
 namespace {
     // local typedefs
-    typedef CryptoPP::RSAES<CryptoPP::OAEP<CryptoPP::SHA256> >::Decryptor RSAES_Decryptor;
-    typedef CryptoPP::RSAES<CryptoPP::OAEP<CryptoPP::SHA256> >::Encryptor RSAES_Encryptor;
+    typedef CryptoPP::SHA256 LcRSAHashFunction; // The hash function used by LimeCrypt
 
-    typedef CryptoPP::RSASS<CryptoPP::PKCS1v15, CryptoPP::SHA256>::Signer RSA_Appendix_Signer;
-    typedef CryptoPP::RSASS<CryptoPP::PKCS1v15, CryptoPP::SHA256>::Verifier RSA_Appendix_Verifier;
+    typedef CryptoPP::RSAES<CryptoPP::OAEP<LcRSAHashFunction> >::Decryptor RSAES_Decryptor;
+    typedef CryptoPP::RSAES<CryptoPP::OAEP<LcRSAHashFunction> >::Encryptor RSAES_Encryptor;
 
-    typedef CryptoPP::RSASS<CryptoPP::PSSR, CryptoPP::SHA256>::Signer RSA_Recovery_Signer;
-    typedef CryptoPP::RSASS<CryptoPP::PSSR, CryptoPP::SHA256>::Verifier RSA_Recovery_Verifier;
+    typedef CryptoPP::RSASS<CryptoPP::PKCS1v15, LcRSAHashFunction>::Signer RSA_Appendix_Signer;
+    typedef CryptoPP::RSASS<CryptoPP::PKCS1v15, LcRSAHashFunction>::Verifier RSA_Appendix_Verifier;
+
+    typedef CryptoPP::RSASS<CryptoPP::PSSR, LcRSAHashFunction>::Signer RSA_Recovery_Signer;
+    typedef CryptoPP::RSASS<CryptoPP::PSSR, LcRSAHashFunction>::Verifier RSA_Recovery_Verifier;
 
     // Basic key functionality for public and private keys
     template <typename T>
