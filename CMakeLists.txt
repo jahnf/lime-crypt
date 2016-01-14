@@ -34,10 +34,10 @@ add_library(limecrypt STATIC src/limecrypt.cpp  include/limecrypt.h  src/limecry
                              src/lcpubkey.cpp   include/lcpubkey.h
                              src/lcaes.cpp      include/lcaes.h
                              src/lcencode.cpp   include/lcencode.h
-                             README.md
+                             README.md          Doxyfile.in
                              )
 
-# Link against crypto++ 
+# Link against crypto++
 target_link_libraries(limecrypt cryptopp-minimal)
 
 if(BUILD_EXAMPLES)
