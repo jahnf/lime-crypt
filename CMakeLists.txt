@@ -44,6 +44,19 @@ if(BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
+if(BUILD_TESTS)
+    # Due to build issues of gtest we will not build tests with MinGW and MSVC for now
+    if(NOT MINGW AND NOT MSVC)
+        enable_testing()
+        add_subdirectory(externals/googletest)
+        include_directories(${CMAKE_CURRENT_SOURCE_DIR}/externals/googletest/googletest/include)
+        include_directories(${CMAKE_CURRENT_SOURCE_DIR}/externals/googletest/googlemock/include)
+        add_subdirectory(test)
+    else()
+        message("Due to build issues of gtest we will not build tests with MinGW and MSVC for now")
+    endif()
+endif()
+
 # If available, generate a target for creating the doxygen documentation
 find_package(Doxygen)
 if(DOXYGEN_FOUND)
