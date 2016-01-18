@@ -31,6 +31,8 @@ public:
     ~PublicKey();
 
     PublicKey& operator=(const PublicKey& rhs);
+    bool operator==(const PublicKey& rhs) const;
+    bool operator!=(const PublicKey& rhs) const;
 
     /// Returns if the current instance is a valid public key.
     bool isValid() const;
@@ -77,9 +79,9 @@ public:
     /// the stream version of the encrypt method.
     bool encrypt(std::string& dataInOut) const;
 
-    /// Returns the maximum plain test size that the encrypt method can process
+    /// Returns the maximum plain test length that the encrypt method can process
     /// or 0 if the key is invalid. @see isValid().
-    unsigned int maxPlainTextSize() const;
+    unsigned int maxPlainTextLength() const;
 
 private:
     struct PublicKeyImpl;
@@ -94,6 +96,8 @@ public:
     ~PrivateKey();
 
     PrivateKey& operator=(const PrivateKey& rhs);
+    bool operator==(const PrivateKey& rhs) const;
+    bool operator!=(const PrivateKey& rhs) const;
 
     /// Returns if the current instance is a valid private key.
     bool isValid() const;
@@ -124,6 +128,10 @@ public:
     /// Decrypt data method previously enrypted with the corresponding public key.
     /// If successful, true is returned and dataInOut contains the plain text.
     bool decrypt(std::string& dataInOut) const;
+
+    /// Returns the maximum size of the recoverable size or 0 if the key is
+    /// invalid. @see isValid().
+    unsigned int maxRecoverableLength() const;
 
 private:
     struct PrivateKeyImpl;

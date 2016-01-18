@@ -29,6 +29,15 @@ namespace {
     template <typename T>
     struct CCKeyImpl
     {
+        bool operator==(const CCKeyImpl<T>& rhs) const
+        {
+            if (isValid() != rhs.isValid()) return false;
+            std::string thiskey, otherkey;
+            saveKeyBase64(thiskey);
+            rhs.saveKeyBase64(otherkey);
+            return (thiskey == otherkey);
+        }
+
         CCKeyImpl() : keyValid(false) {}
 
         bool isValid() const { return keyValid; }
@@ -375,6 +384,16 @@ PrivateKey& PrivateKey::operator=(const PrivateKey& rhs)
     return *this;
 }
 
+bool PrivateKey::operator==(const PrivateKey& rhs) const
+{
+    return (*_impl == *rhs._impl);
+}
+
+bool PrivateKey::operator!=(const PrivateKey& rhs) const
+{
+    return !operator==(rhs);
+}
+
 bool PrivateKey::isValid() const
 {
     return _impl->isValid();
@@ -436,6 +455,18 @@ bool PrivateKey::decrypt(std::string &dataInOut) const
     return true;
 }
 
+unsigned int PrivateKey::maxRecoverableLength() const
+{
+    try {
+        if (!isValid()) throw CryptoPP::Exception(CryptoPP::Exception::INVALID_DATA_FORMAT, "Invalid key." );
+        return RSA_Recovery_Signer(_impl->key).MaxRecoverableLength();
+    }
+    catch (CryptoPP::Exception& e) {
+        handleError(std::string("maxRecoverableLength (private key): ") + e.what());
+    }
+    return 0;
+}
+
 PublicKey::PublicKey() : IKey(), _impl(new PublicKeyImpl)
 {
 }
@@ -459,6 +490,16 @@ PublicKey& PublicKey::operator=(const PublicKey& rhs)
 {
     *_impl = *rhs._impl;
     return *this;
+}
+
+bool PublicKey::operator==(const PublicKey& rhs) const
+{
+    return (*_impl == *rhs._impl);
+}
+
+bool PublicKey::operator!=(const PublicKey& rhs) const
+{
+    return !operator==(rhs);
 }
 
 bool PublicKey::isValid() const
@@ -525,14 +566,14 @@ bool PublicKey::encrypt(std::istream& dataIn, std::ostream& dataOut) const
     return _impl->encrypt<CryptoPP::FileSource, CryptoPP::FileSink>(dataIn, dataOut);
 }
 
-unsigned int PublicKey::maxPlainTextSize() const
+unsigned int PublicKey::maxPlainTextLength() const
 {
     try {
         if (!isValid()) throw CryptoPP::Exception(CryptoPP::Exception::INVALID_DATA_FORMAT, "Invalid key." );
         return RSAES_Encryptor(_impl->key).FixedMaxPlaintextLength();
     }
     catch (CryptoPP::Exception& e) {
-        handleError(std::string("maxPlainTextSize (pubkey): ") + e.what());
+        handleError(std::string("maxPlainTextLength (pubkey): ") + e.what());
     }
     return 0;
 }
