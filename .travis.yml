@@ -5,5 +5,5 @@ sudo: false
 compiler:
   - gcc
   - clang
-  
-script: mkdir build && cd build && cmake .. -DBUILD_TESTS=1 -DBUILD_EXAMPLES=1 && make && make test
+
+script: mkdir build && cd build && cmake .. -DBUILD_TESTS=1 -DBUILD_EXAMPLES=1 && make && make run_tests
