@@ -64,7 +64,7 @@ static void rsa_example_load_and_verify_recovery(const std::string& signed_messa
     Print("Recovered message with recovery: ") << out.str();
 }
 
-std::string rsa_example_load_and_sign_appendix(const std::string& message)
+static std::string rsa_example_load_and_sign_appendix(const std::string& message)
 {
     PrivateKey privKey;
     privKey.load("privateKey.file");
@@ -89,6 +89,28 @@ static void rsa_example_load_and_verify_appendix(const std::string& signed_messa
     Print("Recovered message with appendix: ") << out.str();
 }
 
+static std::string rsa_example_encrypt(const std::string& message)
+{
+    PublicKey pubKey;
+    pubKey.load("publicKey.file");
+
+    std::stringstream in(message), out;
+    if (pubKey.encrypt(in, out))
+        Print("Encrypted message - Hex format (") << out.str().size()
+                             << " bytes): " << Hex::encode(out.str());
+    return out.str();
+}
+
+static std::string rsa_example_decrypt(const std::string& encrypted_msg)
+{
+    PrivateKey privKey;
+    privKey.load("privateKey.file");
+
+    std::stringstream in(encrypted_msg), out;
+    if (privKey.decrypt(in, out))
+        Print("Decrypted message (") << out.str().size() << " bytes): " << out.str();
+    return out.str();
+}
 
 static void rsa_example_exception_error_handling()
 {
@@ -130,6 +152,14 @@ int main(int argc, char** argv)
     Print("---- Sign Message with appendix and verify (short msg) ----");
     signed_message = rsa_example_load_and_sign_appendix(short_message);
     rsa_example_load_and_verify_appendix(signed_message);
+
+    Print("---- Encrypt & Decrypt a Message (short msg) ----");
+    std::string encrypted = rsa_example_encrypt(short_message);
+    /*std::string decrypted =*/ rsa_example_decrypt(encrypted);
+
+    Print("---- Encrypt & Decrypt a Message (long msg) ----");
+    Print("---- // expected to fail, because message is too long ----");
+    encrypted = rsa_example_encrypt(long_message);
 
     rsa_example_exception_error_handling();
 
