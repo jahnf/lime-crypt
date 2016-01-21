@@ -16,7 +16,6 @@ macro(add_run_test test_name test_target)
     add_test(${test_name} ${test_target})
 endmacro()
 
-
 add_executable(rsatests rsa_basic.cpp)
 target_link_libraries(rsatests limecrypt gtest gtest_main)
 add_run_test("LimeCrypt.RSA.Tests" rsatests)
@@ -24,3 +23,11 @@ add_run_test("LimeCrypt.RSA.Tests" rsatests)
 add_executable(aestests aes_basic.cpp)
 target_link_libraries(aestests limecrypt gtest gtest_main)
 add_run_test("LimeCrypt.AES.Tests" aestests)
+
+add_executable(enctests enc_basic.cpp)
+target_link_libraries(enctests limecrypt gtest gtest_main)
+add_run_test("LimeCrypt.Encoding.Tests" enctests)
+
+add_executable(errorhandlingtests errorhandling.cpp)
+target_link_libraries(errorhandlingtests limecrypt gtest gtest_main)
+add_run_test("LimeCrypt.ErrorHandling.Tests" errorhandlingtests)
