@@ -58,7 +58,14 @@ static void aes_decrypt_file(const std::string& filename, const std::string& pas
 
 int main(int argc, char** argv)
 {
+    // The error handling of LimeCrypt can be configured globally:
+    // BOOLEAN_RETURN  : Methods only return true or false, this is the default.
+    // STDERR_OUT      : Methods return true or false and print a detailed error message to stderr.
+    // THROW_EXCEPTION : Throw a LimeCrypt::Exception that contains a detailed error message.
+
+    // For the examples we configure, the errors for boolean return value and stderr out
     errorHandling(STDERR_OUT);
+
     const std::string message("This is a totally secret message. No one should see it.");
     const std::string passphrase("t0t@lly_sEcure-Pa55W0rD_;)");
 
