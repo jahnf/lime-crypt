@@ -31,8 +31,8 @@ static void rsa_example_create_and_save()
         Print("Created new private key.");
 
     // Create matching public key instance from the private key.
-    PublicKey pubKey(privKey);
-    if (pubKey.isValid())
+    PublicKey pubKey;
+    if (pubKey.assignFrom(privKey))
         Print("Created Public key instance from private key");
 
     // Save keys to files
@@ -114,7 +114,21 @@ static std::string rsa_example_decrypt(const std::string& encrypted_msg)
 
 static void rsa_example_exception_error_handling()
 {
+    // We set the error handling to throw exceptions on error
+    ErrorHandling eh = errorHandling();
+    errorHandling(THROW_EXCEPTION);
 
+    // We need to guard LimeCrypt operations with try/catch
+    try {
+        std::string str("teststring.");
+        PublicKey pubKey; // <-- invalid pubkey
+        pubKey.encrypt(str); // <-- fails, throws exception
+    } catch (LimeCrypt::Exception &e) {
+        Print() << e.what();
+    }
+
+    // Set error handling to the previous value
+    errorHandling(eh);
 }
 
 int main(int argc, char** argv)
@@ -131,8 +145,12 @@ int main(int argc, char** argv)
     Print("Long Message  (") << long_message.size() << " bytes): " << long_message;
     Print("Short Message (") << short_message.size() << " bytes): " << short_message;
 
-    // Configure error handling to print out errors to stderr
-    // ... TODO DESCRIBE DEFAULT OR THROW
+    // The error handling of LimeCrypt can be configured globally:
+    // BOOLEAN_RETURN  : Methods only return true or false, this is the default.
+    // STDERR_OUT      : Methods return true or false and print a detailed error message to stderr.
+    // THROW_EXCEPTION : Throw a LimeCrypt::Exception that contains a detailed error message.
+
+    // For the examples we configure, the errors for boolean return value and stderr out
     errorHandling(STDERR_OUT);
 
     rsa_example_create_and_save();
@@ -161,6 +179,7 @@ int main(int argc, char** argv)
     Print("---- // expected to fail, because message is too long ----");
     encrypted = rsa_example_encrypt(long_message);
 
+    Print("---- Example: Error Handling with exceptions ----");
     rsa_example_exception_error_handling();
 
     return 0;
