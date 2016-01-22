@@ -7,7 +7,7 @@ LimeCrypt
 LimeCrypt provides an easy C++ interface to some cryptographic functionality without
 bothering the user with much details while providing secure defaults.
 LimeCrypt is in essence a wrapper around _some_ of the [Crypto++ Libary][1] with
-an interface that is simple to use and supporting C++ standard iostreams.
+an interface that is simple to use and supports C++ standard iostreams.
 
 **Table of Contents**
 
@@ -45,6 +45,14 @@ source `build` directory and run the tests.
     $ make
     $ make test
 
+
+_Note_: You will need to run a
+
+    git submodule update
+
+if you have a fresh checkout to build the tests.
+This will fetch the googletest submodule.
+
 Examples
 --------
 
@@ -52,6 +60,9 @@ Examples
 For more detailed examples see the examples directory.
 
 #### Create, Save and Load Keys
+
+    #include <lcpubkey.h>
+    #include <lcencode.h>
 
     // Uninitialized, invalid private key instance.
     PrivateKey privKey;
@@ -94,6 +105,9 @@ For more detailed examples see the examples directory.
 For more detailed examples see the examples directory.
 
 #### Encrypt
+
+    #include <lcaes.h>
+    #include <lcencode.h>
 
     std::stringstream in("Secret Message."), encrypted;
     AES::encrypt("MyPassphrase", in, encrypted);
