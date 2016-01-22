@@ -9,8 +9,8 @@ using namespace LimeCrypt;
 // A simple print helper class
 class Print  {
 public:
-    Print() : os(std::cout) {}
-    template<typename T> Print(const T& input) : os(std::cout) { os << input; }
+    explicit Print() : os(std::cout) {}
+    template<typename T> explicit Print(const T& input) : os(std::cout) { os << input; }
     ~Print() { os << std::endl; }
     template<typename T> std::ostream& operator<<(const T& input) { return std::cout << input; }
 private:

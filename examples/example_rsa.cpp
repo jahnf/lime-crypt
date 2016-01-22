@@ -7,8 +7,8 @@
 // A simple print helper class
 class Print  {
 public:
-    Print() : os(std::cout) {}
-    template<typename T> Print(const T& input) : os(std::cout) { os << input; }
+    explicit Print() : os(std::cout) {}
+    template<typename T> explicit Print(const T& input) : os(std::cout) { os << input; }
     ~Print() { os << std::endl; }
     template<typename T> std::ostream& operator<<(const T& input) { return std::cout << input; }
 private:
@@ -177,7 +177,7 @@ int main(int argc, char** argv)
 
     Print("---- Encrypt & Decrypt a Message (long msg) ----");
     Print("---- // expected to fail, because message is too long ----");
-    encrypted = rsa_example_encrypt(long_message);
+    /*encrypted =*/ rsa_example_encrypt(long_message);
 
     Print("---- Example: Error Handling with exceptions ----");
     rsa_example_exception_error_handling();

@@ -47,7 +47,7 @@ bool encrypt(const std::string& password, std::istream& in, std::ostream& out,
 {
     try	{
         CryptoPP::AutoSeededRandomPool rng;
-        CryptoPP::SecByteBlock iv_key(CryptoPP::AES::MAX_KEYLENGTH + CryptoPP::AES::BLOCKSIZE);
+        CryptoPP::SecByteBlock key_iv(CryptoPP::AES::MAX_KEYLENGTH + CryptoPP::AES::BLOCKSIZE);
         CryptoPP::SecByteBlock salt(PBKDF_Salt_Size);
         rng.GenerateBlock(salt, salt.size());
 
@@ -55,29 +55,30 @@ bool encrypt(const std::string& password, std::istream& in, std::ostream& out,
         CryptoPP::PKCS5_PBKDF2_HMAC<LcAESHashFunction> pbkdf;
         pbkdf.DeriveKey(
             // buffer that holds the derived key
-            iv_key, iv_key.size(),
+            key_iv, key_iv.size(),
             // purpose byte. unused by this PBKDF implementation.
             0x00,
             // password bytes. careful to be consistent with encoding...
-            (byte *) password.data(), password.size(),
+            reinterpret_cast<const byte *>(password.data()), password.size(),
             // salt bytes
             salt, salt.size(),
             // iteration count. See SP 800-132 for details.
             // You want this as large as you can tolerate.
             // make sure to use the same iteration count on both sides...
-            (uint32_t) iterations
+            static_cast<uint32_t>(iterations)
         );
 
         CryptoPP::GCM< CryptoPP::AES >::Encryption e;
-        e.SetKeyWithIV(iv_key, CryptoPP::AES::MAX_KEYLENGTH, &iv_key[CryptoPP::AES::MAX_KEYLENGTH]);
+        e.SetKeyWithIV(key_iv, CryptoPP::AES::MAX_KEYLENGTH, &key_iv[CryptoPP::AES::MAX_KEYLENGTH]);
 
         // Write salt before encrypted data
         CryptoPP::ArraySource( salt, salt.size(), true, new CryptoPP::FileSink( out ) );
 
         if (storeIterations) {
-            uint32_t iterbytes = iterations;
-            if(is_big_endian()) byteswap32(iterbytes);
-            CryptoPP::ArraySource( (byte*)&iterbytes, sizeof(iterbytes), true, new CryptoPP::FileSink( out ) );
+            union { uint32_t i; byte b[sizeof(uint32_t)]; } iterbytes = {iterations};
+            if(is_big_endian()) byteswap32(iterbytes.i);
+            CryptoPP::ArraySource( iterbytes.b, sizeof(iterbytes.i),
+                                   true, new CryptoPP::FileSink( out ) );
         }
 
         // Writ encrypted data
@@ -99,7 +100,7 @@ bool decrypt(const std::string& password, std::istream& in, std::ostream& out,
              bool readIterations, const unsigned int iterations_in)
 {
     try	{
-        CryptoPP::SecByteBlock iv_key(CryptoPP::AES::MAX_KEYLENGTH + CryptoPP::AES::BLOCKSIZE);
+        CryptoPP::SecByteBlock key_iv(CryptoPP::AES::MAX_KEYLENGTH + CryptoPP::AES::BLOCKSIZE);
         CryptoPP::SecByteBlock salt(PBKDF_Salt_Size);
 
         // Read in salt from beginning of input
@@ -107,33 +108,33 @@ bool decrypt(const std::string& password, std::istream& in, std::ostream& out,
             new CryptoPP::ArraySink(salt, salt.size())
         ).Pump(salt.size());
 
-        uint32_t iterations = iterations_in;
+        union { uint32_t i; byte b[sizeof(uint32_t)]; } iterations = {iterations_in};
 
         if (readIterations) {
             CryptoPP::FileSource(in, false,
-                new CryptoPP::ArraySink((byte*)&iterations, 4)
-            ).Pump(sizeof(iterations));
-            if(is_big_endian()) byteswap32(iterations);
+                new CryptoPP::ArraySink(iterations.b, sizeof(iterations.i))
+            ).Pump(sizeof(iterations.i));
+            if(is_big_endian()) byteswap32(iterations.i);
         }
 
         CryptoPP::PKCS5_PBKDF2_HMAC<LcAESHashFunction> pbkdf;
         pbkdf.DeriveKey(
             // buffer that holds the derived key
-            iv_key, iv_key.size(),
+            key_iv, key_iv.size(),
             // purpose byte. unused by this PBKDF implementation.
             0x00,
             // password bytes. careful to be consistent with encoding...
-            (byte *) password.data(), password.size(),
+            reinterpret_cast<const byte *>(password.data()), password.size(),
             // salt bytes
             salt, salt.size(),
             // iteration count. See SP 800-132 for details.
             // You want this as large as you can tolerate.
             // make sure to use the same iteration count on both sides...
-            iterations
+            iterations.i
         );
 
         CryptoPP::GCM< CryptoPP::AES >::Decryption d;
-        d.SetKeyWithIV(iv_key, CryptoPP::AES::MAX_KEYLENGTH, &iv_key[CryptoPP::AES::MAX_KEYLENGTH]);
+        d.SetKeyWithIV(key_iv, CryptoPP::AES::MAX_KEYLENGTH, &key_iv[CryptoPP::AES::MAX_KEYLENGTH]);
 
         CryptoPP::FileSource( in, true,
             new CryptoPP::AuthenticatedDecryptionFilter( d,

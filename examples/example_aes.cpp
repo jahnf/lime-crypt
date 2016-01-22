@@ -8,8 +8,8 @@
 
 class Print  {
 public:
-    Print() : os(std::cout) {}
-    template<typename T> Print(const T& input) : os(std::cout) { os << input; }
+    explicit Print() : os(std::cout) {}
+    template<typename T> explicit Print(const T& input) : os(std::cout) { os << input; }
     ~Print() { os << std::endl; }
     template<typename T> std::ostream& operator<<(const T& input) { return std::cout << input; }
 private:
@@ -56,7 +56,7 @@ static void aes_decrypt_file(const std::string& filename, const std::string& pas
     AES::decryptFile(passphrase, filename, filename + ".decrypted");
 }
 
-int main(int argc, char** argv)
+int main(int, char**)
 {
     // The error handling of LimeCrypt can be configured globally:
     // BOOLEAN_RETURN  : Methods only return true or false, this is the default.
@@ -71,10 +71,11 @@ int main(int argc, char** argv)
 
     Print("--- AES String Encryption/Decryption Example ---");
     std::string encrypted = aes_encrypt_string(message, passphrase);
-    std::string decrypted = aes_decrypt_string(encrypted, passphrase);
+    /*std::string decrypted =*/ aes_decrypt_string(encrypted, passphrase);
 
     Print("--- AES File Encryption/Decryption Example ---");
     std::string encrypted_filename = aes_encrypt_file("SecretFile", passphrase);
     aes_decrypt_file(encrypted_filename, passphrase);
+
     return 0;
 }

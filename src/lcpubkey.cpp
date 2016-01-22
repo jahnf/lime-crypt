@@ -104,7 +104,7 @@ namespace {
     class StreambufConcatenator : public std::streambuf
     {
     public:
-        StreambufConcatenator(const std::vector<std::istream*>& istrms)
+        explicit StreambufConcatenator(const std::vector<std::istream*>& istrms)
             : m_istrms(istrms), m_current_strm(0) {}
 
     private:
@@ -133,17 +133,18 @@ namespace {
     class IStreamConcatenator : private StreambufConcatenator, public std::istream
     {
     public:
-        IStreamConcatenator(const std::vector<std::istream*>& istrms)
+        explicit IStreamConcatenator(const std::vector<std::istream*>& istrms)
             : m_istrms(istrms), StreambufConcatenator(m_istrms),
-              std::istream((StreambufConcatenator*)this), std::ios(0) {}
+              std::istream(static_cast<StreambufConcatenator*>(this)), std::ios(0) {}
 
-        IStreamConcatenator(std::istream& istrm)
+        explicit IStreamConcatenator(std::istream& istrm)
             : m_istrms(1, &istrm), StreambufConcatenator(m_istrms),
-              std::istream((StreambufConcatenator*)this), std::ios(0) {}
+              std::istream(static_cast<StreambufConcatenator*>(this)), std::ios(0) {}
 
-        IStreamConcatenator(std::istream& istrm0, std::istream& istrm1)
+        explicit IStreamConcatenator(std::istream& istrm0, std::istream& istrm1)
             : m_istrms(1, &istrm0), StreambufConcatenator(m_istrms),
-              std::istream((StreambufConcatenator*)this), std::ios(0) { append(istrm1); }
+              std::istream(static_cast<StreambufConcatenator*>(this)), std::ios(0)
+        { append(istrm1); }
 
         void append(std::istream& istrm) { m_istrms.push_back(&istrm); }
 
@@ -175,11 +176,11 @@ public:
         using namespace CryptoPP;
         size_t readlen;
         FILTER_BEGIN;
-        m_streambuf.write((std::stringstream::char_type*)begin,length);
+        m_streambuf.write(reinterpret_cast<const std::stringstream::char_type*>(begin), length);
         m_streambufLength += length;
         while (m_streambufLength > m_signatureLength) {
             readlen = std::min(m_streambufLength - m_signatureLength, m_buf.size());
-            m_streambuf.read((std::stringstream::char_type*)(byte*)m_buf, readlen);
+            m_streambuf.read(reinterpret_cast<std::stringstream::char_type*>(m_buf.data()), readlen);
             m_messageAccumulator->Update(m_buf, readlen);
             if (m_putMessage)
                 FILTER_OUTPUT2(1, void(0), m_buf, readlen, 0);
@@ -190,7 +191,7 @@ public:
             if (m_streambufLength != m_signatureLength)
                 throw AppendixVerifyFilter::SignatureVerificationFailed();
 
-            m_streambuf.read((std::stringstream::char_type*)(byte*)m_buf, m_streambufLength);
+            m_streambuf.read(reinterpret_cast<std::stringstream::char_type*>(m_buf.data()), m_streambufLength);
             m_verifier.InputSignature(*m_messageAccumulator, m_buf, m_streambufLength);
             m_decodingResult = m_verifier.RecoverAndRestart(m_buf, *m_messageAccumulator);
 
@@ -232,11 +233,11 @@ public:
         using namespace CryptoPP;
         size_t readlen;
         FILTER_BEGIN;
-        m_streambuf.write((std::stringstream::char_type*)begin,length);
+        m_streambuf.write(reinterpret_cast<const std::stringstream::char_type*>(begin), length);
         m_streambufLength += length;
         while (m_streambufLength > m_recoverableLength) {
             readlen = std::min(m_streambufLength - m_recoverableLength, m_buf.size());
-            m_streambuf.read((std::stringstream::char_type*)(byte*)m_buf, readlen);
+            m_streambuf.read(reinterpret_cast<std::stringstream::char_type*>(m_buf.data()), readlen);
             m_messageAccumulator->Update(m_buf, readlen);
             if (m_putMessage)
                 FILTER_OUTPUT2(1, void(0) ,m_buf, readlen, 0);
@@ -246,7 +247,7 @@ public:
         {
             // The remaining bytes (with a maximum of m_recoverableLength will be put into
             // the signature as recoverable part.
-            m_streambuf.read((std::stringstream::char_type*)(byte*)m_buf, m_streambufLength);
+            m_streambuf.read(reinterpret_cast<std::stringstream::char_type*>(m_buf.data()), m_streambufLength);
             m_signer.InputRecoverableMessage(*m_messageAccumulator, m_buf, m_streambufLength);
             m_signer.SignAndRestart(m_rng, *m_messageAccumulator, m_buf);
             FILTER_OUTPUT2(2, void(0), m_buf, m_signer.SignatureLength(), messageEnd);
