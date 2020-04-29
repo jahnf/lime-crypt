@@ -13,6 +13,8 @@ public:
     virtual bool isValid() const = 0;
     virtual bool save(const std::string& filename) const = 0;
     virtual bool load(const std::string& filename) = 0;
+    virtual bool loadFromString(const std::string& content) = 0;
+    
     // auto_ptr is deprecated with C++11
     #if __cplusplus <= 199711L
         template<typename T> struct Pointer { typedef std::auto_ptr<T> Type; };
@@ -42,6 +44,9 @@ public:
 
     /// Load a public key from file.
     bool load(const std::string& filename);
+    
+    /// Load a public key from string
+    bool loadFromString(const std::string& content);
 
     /// Derive and set the public key from a private key.
     bool assignFrom(const PrivateKey& privateKey);
@@ -60,6 +65,10 @@ public:
     /// and recovered message part to dataOut.
     bool verifyWithRecovery(std::istream& dataIn, std::ostream& dataOut) const;
 
+    /// Verifies the input data with PSSR SHA1 signature and write out the message
+    /// and recovered message part to dataOut.
+    bool verifyWithPSSR_SHA1(std::istream& dataIn, std::ostream& dataOut) const;
+    
     /// Verifies the input data with recovery signature.
     bool verifyWithRecovery(std::istream& dataIn) const;
 
@@ -107,6 +116,9 @@ public:
 
     /// Load a public key from file.
     bool load(const std::string& filename);
+    
+    /// Load a private key from string
+    bool loadFromString(const std::string& content);
 
     /// Create and initialize new random private key with the given key size.
     bool create(unsigned int keySizeBit = 2048);
