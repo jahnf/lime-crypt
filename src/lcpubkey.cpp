@@ -25,6 +25,9 @@ namespace {
     typedef CryptoPP::RSASS<CryptoPP::PSSR, LcRSAHashFunction>::Signer RSA_Recovery_Signer;
     typedef CryptoPP::RSASS<CryptoPP::PSSR, LcRSAHashFunction>::Verifier RSA_Recovery_Verifier;
 
+    typedef CryptoPP::RSASS<CryptoPP::PSSR, CryptoPP::SHA1>::Verifier RSA_PSSR_SHA1_Verifier;
+    typedef CryptoPP::RSASS<CryptoPP::PSSR, CryptoPP::SHA1>::Signer RSA_PSSR_SHA1_Signer;
+    
     // Basic key functionality for public and private keys
     template <typename T>
     struct CCKeyImpl
@@ -73,7 +76,6 @@ namespace {
         }
 
         // Source can be either CryptoPP::FileSource or CryptoPP::StringSource
-        // Later implementations will also load and save keys from and to std::strings.
         template <typename Source>
         bool loadKeyBase64(const std::string& in)
         {
@@ -410,6 +412,11 @@ bool PrivateKey::load(const std::string &filename)
     return _impl->loadKeyBase64<CryptoPP::FileSource>(filename);
 }
 
+bool PrivateKey::loadFromString(const std::string &content)
+{
+    return _impl->loadKeyBase64<CryptoPP::StringSource>(content);
+}
+    
 bool PrivateKey::create(unsigned int keySizeBit)
 {
     _impl->reset();
@@ -517,6 +524,11 @@ bool PublicKey::load(const std::string& filename)
 {
     return _impl->loadKeyBase64<CryptoPP::FileSource>(filename);
 }
+    
+bool PublicKey::loadFromString(const std::string &content)
+{
+    return _impl->loadKeyBase64<CryptoPP::StringSource>(content);
+}
 
 bool PublicKey::assignFrom(const PrivateKey& privateKey)
 {
@@ -538,6 +550,11 @@ bool PublicKey::verifyWithAppendix(std::istream& dataIn, const std::string& sign
     return _impl->verify<RSA_Appendix_Verifier, AppendixVerifyFilter>(dataWithSignature);
 }
 
+bool PublicKey::verifyWithPSSR_SHA1(std::istream& dataIn, std::ostream& dataOut) const
+{
+    return _impl->verify<RSA_PSSR_SHA1_Verifier, AppendixVerifyFilter>(dataIn, dataOut);
+}
+    
 bool PublicKey::verifyWithAppendix(std::istream& dataIn, std::ostream& dataOut) const
 {
     return _impl->verify<RSA_Appendix_Verifier, AppendixVerifyFilter>(dataIn, dataOut);
